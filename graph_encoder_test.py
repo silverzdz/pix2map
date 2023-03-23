@@ -13,6 +13,10 @@ def get_vector(centerlines, x, y):
     for centerline in centerlines:
         line = []
         for point in centerline:
+            if (point[0]-x <= -50) or (point[0]-x >= 50):
+                continue
+            if (point[1]-y <= -50) or (point[1]-y >= 50):
+                continue
             node = ("{:.0f}".format(point[0]-x), "{:.0f}".format(point[1]-y))
             nodes.append(node)
             line.append(node)
@@ -31,6 +35,7 @@ def cal_adjacent_matrix(centerlines, x, y):
         node_id += 1
     node_num = node_id
     
+    # adj_matrix = np.full((512, 512), -np.inf)
     adj_matrix = np.full((node_num, node_num), -np.inf)
     for line in lines:
         line_length = len(line)
@@ -79,28 +84,40 @@ def vectorize(encoding_map, device):
 
 if __name__ == '__main__':
     
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
     am = ArgoverseMap()
     
     tracking_dataset_dir = 'argoverse-api/argoverse-tracking/sample/'
     argoverse_loader = ArgoverseTrackingLoader(tracking_dataset_dir)
     argoverse_data = argoverse_loader[0]
     
-    x,y,_ = argoverse_data.get_pose(50).translation
+    x,y,_ = argoverse_data.get_pose(100).translation
     local_centerlines = am.find_local_lane_centerlines(x,y, "PIT", query_search_range_manhattan=40)
     
     node_map, adj_matrix = cal_adjacent_matrix(local_centerlines, x, y)
     
     encoding_map = position_encoding(node_map)
+    n = len(encoding_map)
+    
+    
+    ### using nn.Embedding to encode the original node position with padding
+    encoding_tensor = torch.zeros(size = (1, 512))
+    for i in range(n):
+        encoding_tensor[:,i] = list(encoding_map)[i]
+    encoding_tensor = encoding_tensor.int()
+    
+    embedding = torch.nn.Embedding(10000,512,padding_idx=0)
+    input_embedding = embedding(encoding_tensor).to(device)
     
     #print(encoding_map)
-    n = len(encoding_map)
+    
     test_vectors = torch.zeros(size = (1, n, 512))
     for i in range(n):
         test_vectors[:,i,i] = torch.Tensor([list(encoding_map)[i]])
     
     ### TODO: how to pad vectors to 512-dimension?
-    
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     
     test_vectors = test_vectors.to(device)
     
@@ -141,5 +158,8 @@ if __name__ == '__main__':
         adj_list.append(v_list)
     '''
     
+    ### TODO: why zero-tensor send to transformer would get NaN?
+    
     # batch size can only be 1
+    # res = transformer(input_embedding)
     res = transformer(test_vectors)
