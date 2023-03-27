@@ -63,5 +63,7 @@ class Transformer(nn.Module):
         for l in range(self.layers):
             v_l = self.resblock(v_l, v_l, v_l)[0]
         v_l = v_l.permute(1,0,2)
+        
+        ### TODO: Correct? Should div 512?
         v = torch.mean(v_l, dim = 1)
         return v
