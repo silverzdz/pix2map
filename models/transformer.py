@@ -31,11 +31,11 @@ class ResidualAttentionBlock(nn.Module):
         self.attn_mask = attn_mask
         self.key_padding_mask = key_padding_mask
         
-    def attention(self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor) -> torch.Tensor:
-        self.attn_mask = self.attn_mask.to(dtype=k.dtype, device=k.device) if self.attn_mask is not None else None
-        return self.attn(q, k, v, key_padding_mask = self.key_padding_mask, need_weights=False, attn_mask=self.attn_mask)[0]
+    def attention(self, x: torch.Tensor) -> torch.Tensor:
+        self.attn_mask = self.attn_mask.to(dtype=x.dtype, device=x.device) if self.attn_mask is not None else None
+        return self.attn(x, x, x, key_padding_mask = self.key_padding_mask, need_weights=False, attn_mask=self.attn_mask)[0]
     
-    def forward(self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         
         ###TODO: true??
         ### important!!!
@@ -46,24 +46,27 @@ class ResidualAttentionBlock(nn.Module):
         # N: batch_size
         # L: target sequence length
         # S: source sequence length
-        x = q + self.attention(self.ln_1(q), self.ln_1(k), self.ln_1(v))
+        x = x + self.attention(self.ln_1(x))
         x = x + self.mlp(self.ln_2(x))
-        return x, k, x
+        return x
     
 class Transformer(nn.Module):
     def __init__(self, width: int, layers: int, heads: int, attn_mask: torch.Tensor = None, key_padding_mask: torch.Tensor = None) -> None:
         super().__init__()
         self.width = width
         self.layers = layers
-        self.resblock = ResidualAttentionBlock(width, heads, attn_mask, key_padding_mask)
+        # self.resblock = ResidualAttentionBlock(width, heads, attn_mask, key_padding_mask)
+        self.resblocks = nn.Sequential(*[ResidualAttentionBlock(width, heads, attn_mask) for _ in range(layers)])
 
     def forward(self, v_0: torch.Tensor) -> torch.Tensor:
-        assert v_0.shape[2] == 512
-        v_l = v_0.permute(1,0,2)
-        for l in range(self.layers):
-            v_l = self.resblock(v_l, v_l, v_l)[0]
-        v_l = v_l.permute(1,0,2)
+        # assert v_0.shape[2] == 512
+        # v_l = v_0.permute(1,0,2)
+        
+        v_l = self.resblocks(v_0)
+        
+        # v_l = v_l.permute(1,0,2)
         
         ### TODO: Correct? Should div 512?
-        v = torch.mean(v_l, dim = 1)
-        return v
+        # v = torch.mean(v_l, dim = 1)
+        # v = torch.mean(v_l, dim = 0)
+        return v_l

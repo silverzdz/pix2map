@@ -125,7 +125,9 @@ class ModifiedResNet(nn.Module):
             
         return nn.Sequential(*layers)
     
-    def forward(self, xs: List[torch.Tensor]) -> torch.Tensor:
+    def forward(self, img: torch.Tensor) -> torch.Tensor:
+        # imgs: [N, 7, C, H, W]
+        xs = [img[:,i,:,:,:] for i in range(7)]
         
         ### TODO: add stacks
         def stem(x):

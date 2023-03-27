@@ -1,4 +1,4 @@
-from models.transformer import Transformer
+from models.resnet import Transformer
 import torch
 import numpy as np
 import os
@@ -171,5 +171,14 @@ if __name__ == '__main__':
     
     
     # batch size can only be 1
+    input_embedding = input_embedding.permute(1,0,2)
     res = transformer(input_embedding)
+    res = res.permute(1,0,2)
+    res = torch.mean(res, dim=1)
     # res = transformer(test_vectors)
+    
+    res1 = res
+    res2 = res
+    logit_scale = torch.nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
+    logit_scale = logit_scale.exp()
+    logits1 = logit_scale * res1 @ res2.t()
