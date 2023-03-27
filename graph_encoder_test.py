@@ -36,7 +36,10 @@ def cal_adjacent_matrix(centerlines, x, y):
     node_num = node_id
     
     # adj_matrix = np.full((512, 512), -np.inf)
-    adj_matrix = np.full((node_num, node_num), -np.inf)
+    
+    ### use a big num instead of np.inf, for fear that the apprearance of nan after softmax
+    adj_matrix = np.full((512, 512), -1e20)
+    # adj_matrix = np.full((node_num, node_num), -np.inf)
     for line in lines:
         line_length = len(line)
         
@@ -110,6 +113,9 @@ if __name__ == '__main__':
     embedding = torch.nn.Embedding(10000,512,padding_idx=0)
     input_embedding = embedding(encoding_tensor).to(device)
     
+    ### batch size set to 2
+    input_embedding = torch.cat((input_embedding, input_embedding), 0)
+    
     #print(encoding_map)
     
     test_vectors = torch.zeros(size = (1, n, 512))
@@ -128,7 +134,8 @@ if __name__ == '__main__':
     # adj_matrix[-1,:] = -np.inf
     
     num_heads = 512 // 64
-    batch_size = 1
+    ### batch size set to 2
+    batch_size = 2
     attn_mask = np.zeros(shape = (num_heads*batch_size, adj_matrix.shape[0], adj_matrix.shape[1]))
     for i in range(num_heads*batch_size):
         attn_mask[i] = adj_matrix
@@ -158,8 +165,11 @@ if __name__ == '__main__':
         adj_list.append(v_list)
     '''
     
-    ### TODO: why zero-tensor send to transformer would get NaN?
+    ### TODO: finished
+    ### Why zero-tensor send to transformer would get NaN?
+    ### The key is in softmax. Should use a big number instead of np.inf, so that nan would not be appeared.
+    
     
     # batch size can only be 1
-    # res = transformer(input_embedding)
-    res = transformer(test_vectors)
+    res = transformer(input_embedding)
+    # res = transformer(test_vectors)
