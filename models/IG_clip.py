@@ -84,6 +84,9 @@ class ImageGraphClip(nn.Module):
         image_features = self.encode_image(image)
         graph_features = self.encode_graph(graph)
         
+        # image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+        # graph_features = graph_features / graph_features.norm(dim=-1, keepdim=True)
+        
         batch_size = image_features.shape[0]
         
         cos_matrix = torch.zeros((batch_size, batch_size))

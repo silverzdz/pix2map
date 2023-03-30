@@ -10,7 +10,7 @@ def get_vector(centerlines, x, y):
                 continue
             if (point[1]-y <= -50) or (point[1]-y >= 50):
                 continue
-            node = ("{:.0f}".format(point[0]-x), "{:.0f}".format(point[1]-y))
+            node = (int("{:.0f}".format(point[0]-x)), int("{:.0f}".format(point[1]-y)))
             nodes.append(node)
             line.append(node)
         lines.append(line)
@@ -34,6 +34,8 @@ def cal_adjacent_matrix(centerlines, x, y):
     adj_matrix = np.full((512, 512), -1e20)
     # adj_matrix = np.full((node_num, node_num), -np.inf)
     for line in lines:
+        if len(line) == 0:
+            continue
         line_length = len(line)
         
         first_node = line[0]
@@ -66,5 +68,6 @@ def position_encoding(node_map):
         y = int(i[1]) + 50
         id = node_map[i]
         encoding = y * 100 + x
+        encoding = 9999 if encoding >= 10000 else encoding
         new_map[encoding] = id
     return new_map
