@@ -4,6 +4,7 @@ from torchvision import transforms as T
 import numpy as np
 import PIL
 import sys
+import time
 from typing import List, Tuple, Dict
 sys.path.append('./..')
 from map.utils import get_vector, cal_adjacent_matrix, position_encoding
@@ -70,6 +71,16 @@ class MyDataset(Dataset):
         data['graph'] = encoding_tensor.int().to(self.device)
         data['adj_matrix'] = torch.Tensor(adj_matrix).to(self.device)
         
+        
+        # node_map
+        nodes = list(node_map.keys())
+        node_map = np.array([np.array(node) for node in nodes])
+        map_size = node_map.shape[0]
+        node_map = np.pad(node_map, ((0, 512-node_map.shape[0]), (0, 0)), 'constant', constant_values = ((0,0), (0,0)))
+        
+        data['node_map'] = node_map
+        data['map_size'] = map_size
+        
         return data
     
     def __len__(self) -> int:
@@ -110,16 +121,32 @@ if __name__ == '__main__':
     
     print("Initialize finished.")
     
+    start = time.time()
+    
     for idx, data in enumerate(dataloader, 0):
         print("Loading batch {} finished.".format(idx))
+        
+        time1 = time.time()
+        print("time1: {}".format(time1 - start))
+        
         clip = ImageGraphClip(512, 224, [2,2,2,2], 7, 512, 8, 7).to(device)
         
         res = clip(data['img'], data['graph'], data['adj_matrix'])
         
         loss1 = contrastive_loss(res)
-        #loss2 = chamfer_loss(res, node_maps)
+        
+        print("loss1: {}".format(loss1))
+        
+        loss2 = chamfer_loss(res, data['node_map'], data['map_size'])
+        
+        print("loss2: {}".format(loss2))
     
         ### whether loss3 times 0.1?
-        #loss3 = edge_loss(res, node_maps, adj_matrixes)
+        loss3 = edge_loss(res, data['node_map'], data['adj_matrix'], data['map_size'])
+        
+        print("loss3: {}".format(loss3))
+        
+        time2 = time.time()
+        print("time2: {}".format(time2 - start))
         
         pass
