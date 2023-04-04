@@ -20,7 +20,7 @@ class ImageGraphClip(nn.Module):
                  transformer_width: int,
                  transformer_heads: int,
                  transformer_layers: int,
-                 attn_mask: torch.Tensor
+                 attn_mask: torch.Tensor = None
                  ) -> None:
         super().__init__()
         
@@ -69,20 +69,20 @@ class ImageGraphClip(nn.Module):
     def encode_image(self, image: torch.Tensor) -> torch.Tensor:
         return self.resnet(image)
     
-    def encode_graph(self, graph: torch.Tensor) -> torch.Tensor:
+    def encode_graph(self, graph: torch.Tensor, adj_matrix: torch.Tensor) -> torch.Tensor:
         x = self.token_embedding(graph)
         
         x = x.permute(1,0,2)
-        x = self.transformer(x)
+        x = self.transformer(x, adj_matrix)
         x = x.permute(1,0,2)
         x = torch.mean(x, dim = 1)
         x = self.ln_final(x)
         
         return x
     
-    def forward(self, image: torch.Tensor, graph:torch.Tensor) -> torch.Tensor:
+    def forward(self, image: torch.Tensor, graph:torch.Tensor, adj_matrix: torch.Tensor) -> torch.Tensor:
         image_features = self.encode_image(image)
-        graph_features = self.encode_graph(graph)
+        graph_features = self.encode_graph(graph, adj_matrix)
         
         # image_features = image_features / image_features.norm(dim=-1, keepdim=True)
         # graph_features = graph_features / graph_features.norm(dim=-1, keepdim=True)
