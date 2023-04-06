@@ -11,11 +11,11 @@ from map.utils import get_vector, cal_adjacent_matrix, position_encoding
 from models.IG_clip import ImageGraphClip
 from argoverse.map_representation.map_api import ArgoverseMap
 from argoverse.data_loading.argoverse_tracking_loader import ArgoverseTrackingLoader
-from models.loss import contrastive_loss, chamfer_loss, edge_loss
+from models.loss import contrastive_loss, chamfer_loss, edge_loss, chamfer_loss_simple
 
 camera_list = ['ring_front_center', 'ring_front_left', 'ring_front_right', 'ring_rear_left', 'ring_rear_right', 'ring_side_left', 'ring_side_right']
 
-root_dir = '/mnt/d/dataset/argoverse/argoverse-tracking/'
+root_dir = '/home/zdz/dataset/argoverse/argoverse-tracking/'
 dir_name = {'train': ['train1', 'train2', 'train3', 'train4'], 'test': ['test']}
 
 def fix_img(img: PIL.Image.Image) -> PIL.Image.Image:
@@ -54,7 +54,7 @@ class MyDataset(Dataset):
         argoverse_data = argoverse_loader[j]
         
         data = {}
-                    
+               
         # img
         imgs = [argoverse_data.get_image_sync(k, camera) for camera in camera_list]
         imgs = [PIL.Image.fromarray(img) for img in imgs]
@@ -71,16 +71,15 @@ class MyDataset(Dataset):
         data['graph'] = encoding_tensor.int().to(self.device)
         data['adj_matrix'] = torch.Tensor(adj_matrix).to(self.device)
         
-        
         # node_map
         nodes = list(node_map.keys())
         node_map = np.array([np.array(node) for node in nodes])
         map_size = node_map.shape[0]
         node_map = np.pad(node_map, ((0, 512-node_map.shape[0]), (0, 0)), 'constant', constant_values = ((0,0), (0,0)))
         
-        data['node_map'] = node_map
+        data['node_map'] = torch.Tensor(node_map).to(self.device)
         data['map_size'] = map_size
-        
+
         return data
     
     def __len__(self) -> int:
@@ -116,19 +115,20 @@ class MyDataset(Dataset):
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    argoverse_dataset = MyDataset('train', device=device)
-    dataloader = DataLoader(dataset=argoverse_dataset, batch_size=16, shuffle=True)
+    argoverse_dataset = MyDataset('train')
+    dataloader = DataLoader(dataset=argoverse_dataset, batch_size=16, shuffle=True, num_workers=0)
     
     print("Initialize finished.")
-    
-    start = time.time()
-    
+    start1 = time.time()
     for idx, data in enumerate(dataloader, 0):
         print("Loading batch {} finished.".format(idx))
         
-        time1 = time.time()
-        print("time1: {}".format(time1 - start))
+        end1 = time.time()
+        print("Loading time: {}".format(end1 - start1))
         
+        for key in data:
+            data[key] = data[key].to(device)
+            
         clip = ImageGraphClip(512, 224, [2,2,2,2], 7, 512, 8, 7).to(device)
         
         res = clip(data['img'], data['graph'], data['adj_matrix'])
@@ -137,16 +137,20 @@ if __name__ == '__main__':
         
         print("loss1: {}".format(loss1))
         
-        loss2 = chamfer_loss(res, data['node_map'], data['map_size'])
+        loss2_1 = chamfer_loss_simple(res, data['node_map'], data['map_size'])
+        print("loss2_1: {}".format(loss2_1))
         
-        print("loss2: {}".format(loss2))
-    
+        end2 = time.time()
+        print("Forward + Loss1 + Loss2 time: {}".format(end2 - end1))
+        
+        # loss2 = chamfer_loss(res, data['node_map'], data['map_size'])
+
         ### whether loss3 times 0.1?
         loss3 = edge_loss(res, data['node_map'], data['adj_matrix'], data['map_size'])
         
         print("loss3: {}".format(loss3))
         
-        time2 = time.time()
-        print("time2: {}".format(time2 - start))
+        end3 = time.time()
+        print("Loss3 time: {}".format(end3 - end2))
         
         pass

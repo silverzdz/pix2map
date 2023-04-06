@@ -89,7 +89,7 @@ class ImageGraphClip(nn.Module):
         
         batch_size = image_features.shape[0]
         
-        cos_matrix = torch.zeros((batch_size, batch_size))
+        cos_matrix = torch.zeros((batch_size, batch_size)).to(image_features.device)
         for i in range(batch_size):
             for j in range(batch_size):
                 cos_matrix[i][j] = self.cos(image_features[i], graph_features[j])
