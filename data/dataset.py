@@ -11,7 +11,7 @@ from map.utils import get_vector, cal_adjacent_matrix, position_encoding
 from models.IG_clip import ImageGraphClip
 from argoverse.map_representation.map_api import ArgoverseMap
 from argoverse.data_loading.argoverse_tracking_loader import ArgoverseTrackingLoader
-from models.loss import contrastive_loss, chamfer_loss, edge_loss, chamfer_loss_simple
+from models.loss import contrastive_loss, chamfer_loss, edge_loss, chamfer_loss_simple, edge_loss_simple
 
 camera_list = ['ring_front_center', 'ring_front_left', 'ring_front_right', 'ring_rear_left', 'ring_rear_right', 'ring_side_left', 'ring_side_right']
 
@@ -135,10 +135,10 @@ if __name__ == '__main__':
         
         loss1 = contrastive_loss(res)
         
-        print("loss1: {}".format(loss1))
+        print("Loss1: {}".format(loss1))
         
-        loss2_1 = chamfer_loss_simple(res, data['node_map'], data['map_size'])
-        print("loss2_1: {}".format(loss2_1))
+        loss2 = chamfer_loss_simple(res, data['node_map'], data['map_size'])
+        print("Loss2: {}".format(loss2))
         
         end2 = time.time()
         print("Forward + Loss1 + Loss2 time: {}".format(end2 - end1))
@@ -146,11 +146,16 @@ if __name__ == '__main__':
         # loss2 = chamfer_loss(res, data['node_map'], data['map_size'])
 
         ### whether loss3 times 0.1?
-        loss3 = edge_loss(res, data['node_map'], data['adj_matrix'], data['map_size'])
+        loss3 = edge_loss_simple(res, data['node_map'], data['adj_matrix'], data['map_size'])
         
-        print("loss3: {}".format(loss3))
+        print("Loss3: {}".format(loss3))
         
         end3 = time.time()
         print("Loss3 time: {}".format(end3 - end2))
+        
+        loss = loss1 + loss2 + 0.1*loss3
+        print("Final loss: {}".format(loss))
+        
+        print("Batch time: {}".format(end3 - start1))
         
         pass

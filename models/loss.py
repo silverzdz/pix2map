@@ -124,6 +124,7 @@ def edge_loss(cos_matrix: torch.Tensor, node_map: torch.Tensor, adj_matrixes: to
         inner_loss = torch.zeros(()).to(cos_matrix.device)
         
         cnt = 0
+        start = time.time()
         for v in range(int(map_size[i])):
             ws = np.where(np.array(adj_matrixes[i][v].cpu()) == 0)[0].tolist()
             for w in ws:
@@ -145,8 +146,71 @@ def edge_loss(cos_matrix: torch.Tensor, node_map: torch.Tensor, adj_matrixes: to
                 inner_loss += bce_loss(lnd, rnd)
         
         print("inner_loss: {}".format(inner_loss))
+        end = time.time()
+        print("Loss3 unit time: {}".format(end - start))
+            
         inner_loss = inner_loss / cnt if cnt != 0 else torch.zeros(())
         loss += inner_loss
     
+    loss = loss/n
+    return loss
+
+### TODO: calculate chamfer matrix in advance to accelerate
+def edge_loss_simple(cos_matrix: torch.Tensor, node_map: torch.Tensor, adj_matrixes: torch.Tensor, map_size: torch.Tensor) -> torch.Tensor:
+    bce_loss = nn.BCELoss()
+    cham_loss = dist_chamfer_2D.chamfer_2DDist()
+    loss = torch.zeros(()).to(cos_matrix.device)
+    epsilon = 1e-8
+    n = cos_matrix.shape[0]
+    
+    a = torch.zeros((n, n)).to(cos_matrix.device)
+    for i in range(n):
+        sum_a_i = torch.zeros(()).to(cos_matrix.device)
+        for j in range(n):
+            sum_a_i += torch.exp(cos_matrix[j][i])
+        for j in range(n):
+            a[i][j] = (torch.exp(cos_matrix[j][i])/sum_a_i)
+            
+    chamfer_idx_list = [None] * (n*n)
+    
+    for i in range(n):
+        nodes_1 = node_map[i:i+1][:,:map_size[i],:]
+        for j in range(i+1, n):
+            nodes_2 = node_map[j:j+1][:,:map_size[j],:]
+            dist1, dist2, idx1, idx2 = cham_loss(nodes_1, nodes_2)
+            chamfer_idx_list[i*n+j] = idx1
+            chamfer_idx_list[j*n+i] = idx2
+    
+    start = time.time()        
+    for i in range(n):
+        cnt = 0
+        
+        inner_loss = torch.zeros(()).to(cos_matrix.device)
+        for v in range(int(map_size[i])):
+            ws = torch.where(adj_matrixes[i][v] == 0)[0].tolist()
+            for w in ws:
+                if v == w:
+                    continue
+                cnt += 1
+                rnd = torch.ones(()).to(cos_matrix.device)
+                lnd = torch.zeros(()).to(cos_matrix.device)
+                
+                for j in range(n):
+                    if j == i:
+                        continue
+                    idx = chamfer_idx_list[i*n+j]
+                    v_index = idx[0][v]
+                    w_index = idx[0][w]
+                    if adj_matrixes[j][v_index][w_index] == 0:
+                        lnd += a[i][j]
+                    
+                lnd += epsilon
+                inner_loss += bce_loss(lnd, rnd)
+            
+        inner_loss = inner_loss / cnt if cnt != 0 else torch.zeros(())
+        loss += inner_loss
+    
+    end = time.time()
+    print("for loop time: {}".format(end - start))
     loss = loss/n
     return loss
