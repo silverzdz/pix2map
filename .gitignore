@@ -1,2 +1,6 @@
 # .gitignore file
 train-CLIP
+pretrain
+checkpoint.pth
+best_model.pth
+log.txt

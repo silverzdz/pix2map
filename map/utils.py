@@ -28,6 +28,9 @@ def cal_adjacent_matrix(centerlines, x, y):
         node_id += 1
     node_num = node_id
     
+    if len(node_map) > 512:
+        node_map = {k: node_map[k] for k in list(node_map)[:512]}
+    
     # adj_matrix = np.full((512, 512), -np.inf)
     
     ### use a big num instead of np.inf, for fear that the apprearance of nan after softmax
@@ -39,25 +42,33 @@ def cal_adjacent_matrix(centerlines, x, y):
         line_length = len(line)
         
         first_node = line[0]
-        first_id = node_map[first_node]
-        adj_matrix[first_id][first_id] = 0
-        
         last_node = line[-1]
-        last_id = node_map[last_node]
-        adj_matrix[last_id][last_id] = 0
+        first_id = 0
+        last_id = 0
+        if first_node in node_map:
+            first_id = node_map[first_node]
+            adj_matrix[first_id][first_id] = 0
+        if last_node in node_map:
+            last_id = node_map[last_node]
+            adj_matrix[last_id][last_id] = 0
         
         for i in range(1, line_length-1):
             node = line[i]
-            node_id = node_map[node]
-            if i == 1:
-                adj_matrix[first_id][node_id] = 0
-            if i == line_length - 2:
-                adj_matrix[last_id][node_id] = 0
-            pre_id = node_map[line[i-1]]
-            next_id = node_map[line[i+1]]
-            adj_matrix[node_id][node_id] = 0 # self
-            adj_matrix[node_id][pre_id] = 0 # pre
-            adj_matrix[node_id][next_id] = 0 # next
+            if node in node_map:
+                node_id = node_map[node]
+                adj_matrix[node_id][node_id] = 0 # self
+                if i == 1 and (first_node in node_map):
+                    adj_matrix[first_id][node_id] = 0
+                if i == line_length - 2 and (last_node in node_map):
+                    adj_matrix[node_id][last_id] = 0
+                '''
+                if line[i-1] in node_map:
+                    pre_id = node_map[line[i-1]]
+                    adj_matrix[node_id][pre_id] = 0 # pre
+                '''
+                if line[i+1] in node_map:
+                    next_id = node_map[line[i+1]]
+                    adj_matrix[node_id][next_id] = 0 # next
     
     return node_map, adj_matrix  
 

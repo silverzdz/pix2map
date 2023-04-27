@@ -180,8 +180,7 @@ def edge_loss_simple(cos_matrix: torch.Tensor, node_map: torch.Tensor, adj_matri
             dist1, dist2, idx1, idx2 = cham_loss(nodes_1, nodes_2)
             chamfer_idx_list[i*n+j] = idx1
             chamfer_idx_list[j*n+i] = idx2
-    
-    start = time.time()        
+         
     for i in range(n):
         cnt = 0
         
@@ -210,7 +209,5 @@ def edge_loss_simple(cos_matrix: torch.Tensor, node_map: torch.Tensor, adj_matri
         inner_loss = inner_loss / cnt if cnt != 0 else torch.zeros(())
         loss += inner_loss
     
-    end = time.time()
-    print("for loop time: {}".format(end - start))
     loss = loss/n
     return loss
