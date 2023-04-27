@@ -140,11 +140,11 @@ if __name__ == "__main__":
                 total_loss += loss.item()
                 print("Epoch={}/{}, {}/{} of train, test loss={}".format(
                 epoch, 40, idx, len(test_dataloader), loss.item()))
-                print("============================================\n")
+                # print("============================================\n")
                 f = open("log.txt", "a")
                 f.write("Epoch={}/{}, {}/{} of train, test loss={}\n".format(
                 epoch, 40, idx, len(test_dataloader), loss.item()))
-                f.write("============================================\n\n")
+                # f.write("============================================\n\n")
                 f.close()
         
         avg_loss = 0
